@@ -39,32 +39,29 @@ const findAdmin = async (username) => {
 
 
 const createTwoAdmins = async () => {
-  try { 
-
-    const existingAdmin1 = await Admin.findOne({ username: "admin" });
-    const existingAdmin2 = await Admin.findOne({ username: "admin2" });
-
-    if (existingAdmin1 || existingAdmin2) {
-      console.log("Admins ready to log in");
-      return;
-    }
-
+  try {
     const adminsData = [
       { username: "admin", password: process.env.ADMIN_ONE_PW },
       { username: "admin2", password: process.env.ADMIN_TWO_PW },
     ];
 
     for (const adminData of adminsData) {
+      const existingAdmin = await Admin.findOne({ username: adminData.username });
+
+      if (existingAdmin) {
+        console.log(`${adminData.username} already exists`);
+        continue;
+      }
+
       const hashedPassword = await bcrypt.hash(adminData.password, 10);
 
       const admin = new Admin({
         username: adminData.username,
         password: hashedPassword,
-    });
+      });
 
-    await admin.save();
-    
-    console.log("Admin created");
+      await admin.save();
+      console.log(`${adminData.username} created`);
     }
   } catch (err) {
     console.log("Error creating admin:", err);
