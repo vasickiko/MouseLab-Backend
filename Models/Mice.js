@@ -56,7 +56,7 @@ const miceSchema = new mongoose.Schema(
     },
   
     
-    batteryMah: { type: Number, required: true },
+    batteryMah: { type: Number },
     batteryLife: { type: String },
 
     switches: { type: String, required: true, trim: true },
