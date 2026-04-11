@@ -9,6 +9,12 @@ const createMouse = async (req, res) => {
     let imageUrl = "";
 
     if (req.file) {
+      if (!req.file.path) {
+        return res.status(400).json({
+          message: "Image upload failed. File path is missing.",
+        });
+      }
+
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "mice",
       });
@@ -18,7 +24,28 @@ const createMouse = async (req, res) => {
         "/upload/f_auto,q_auto/"
       );
 
-      fs.unlinkSync(req.file.path);
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    }
+
+    let colors = [];
+    let gripStyles = [];
+
+    try {
+      colors = data.colors ? JSON.parse(data.colors) : [];
+    } catch {
+      return res.status(400).json({
+        message: "Invalid colors format",
+      });
+    }
+
+    try {
+      gripStyles = data.gripStyles ? JSON.parse(data.gripStyles) : [];
+    } catch {
+      return res.status(400).json({
+        message: "Invalid gripStyles format",
+      });
     }
 
     const mouseData = {
@@ -38,24 +65,19 @@ const createMouse = async (req, res) => {
       coating: data.coating === "true",
       mcu: data.mcu || "",
       batteryLife: data.batteryLife || "",
-
-      colors: data.colors ? JSON.parse(data.colors) : [],
-
-      gripStyles: data.gripStyles ? JSON.parse(data.gripStyles) : [],
-
+      colors,
+      gripStyles,
       dimensions: {
         width: Number(data.width),
         height: Number(data.height),
         length: Number(data.length),
       },
-
       performance: {
         dpi: Number(data.dpi),
         pollingRate: Number(data.pollingRate),
         trackingSpeed: Number(data.trackingSpeed),
         acceleration: Number(data.acceleration),
       },
-
       affiliateLink: {
         amazon: data.amazon || "",
         aliExpress: data.aliExpress || "",
@@ -69,9 +91,10 @@ const createMouse = async (req, res) => {
       mouse,
     });
   } catch (error) {
-    console.log(error);
+    console.log("CREATE MOUSE ERROR:", error);
     res.status(500).json({
       message: "Error creating mouse",
+      error: error.message,
     });
   }
 };
@@ -99,6 +122,5 @@ const getAllMice = async (req, res) => {
     });
   }
 };
-
 
 module.exports = { createMouse, getAllMice };
