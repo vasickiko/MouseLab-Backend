@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+require("dotenv").config();
 
 const adminSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -49,8 +50,8 @@ const createTwoAdmins = async () => {
     }
 
     const adminsData = [
-      { username: "admin", password: "sdKASJJidj2Sj29SJkjs" },
-      { username: "admin2", password: "SKHjd828as892Sjif2h" },
+      { username: "admin", password: process.env.ADMIN_ONE_PW },
+      { username: "admin2", password: process.env.ADMIN_TWO_PW },
     ];
 
     for (const adminData of adminsData) {
