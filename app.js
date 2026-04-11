@@ -3,7 +3,7 @@ const { expressjwt } = require("express-jwt");
 const express = require("express");
 const connectDB = require("./config/db");
 const cors = require("cors");
-const { createAdmin } = require("./Models/Admin");
+const { createTwoAdmins } = require("./Models/Admin");
 const path = require("path");
 
 const upload = require("./multer/upload");
@@ -43,7 +43,7 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     await connectDB();
-    await createAdmin();
+    await createTwoAdmins();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);

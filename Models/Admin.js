@@ -71,6 +71,4 @@ const createTwoAdmins = async () => {
 };
 
 
-
-
-module.exports = { createAdmin, findAdmin };
+module.exports = { createTwoAdmins, findAdmin };
