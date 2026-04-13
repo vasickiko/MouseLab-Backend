@@ -8,6 +8,8 @@ const createMouse = async (req, res) => {
 
     let imageUrl = "";
 
+    const parsedColors = data.colors ? JSON.parse(data.colors) : [];
+
     if (req.file) {
       if (!req.file.path) {
         return res.status(400).json({
@@ -65,7 +67,24 @@ const createMouse = async (req, res) => {
       coating: data.coating === "true",
       mcu: data.mcu || "",
       batteryLife: data.batteryLife || "",
-      colors,
+      colors: parsedColors
+    .map((color) => ({
+      mode: color.mode === "ombre" ? "ombre" : "static",
+      values: Array.isArray(color.values)
+        ? color.values.filter((item) => item && item.trim() !== "")
+        : [],
+    }))
+    .filter((color) => {
+      if (color.mode === "static") {
+        return color.values.length >= 1;
+      }
+
+      if (color.mode === "ombre") {
+        return color.values.length >= 2;
+      }
+
+      return false;
+    }),
       gripStyles,
       dimensions: {
         width: Number(data.width),

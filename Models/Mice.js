@@ -65,7 +65,19 @@ const miceSchema = new mongoose.Schema(
     material: { type: String, trim: true },
 
     coating: { type: Boolean, default: false },
-    colors: [String],
+    colors: [
+      {
+        mode: {
+          type: String,
+          enum: ["static", "ombre"],
+          default: "static",
+        },
+        values: {
+          type: [String],
+          default: [],
+        },
+      },
+    ],
     affiliateLink: {
       amazon: {type: String},
       aliExpress: {type: String},
