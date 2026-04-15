@@ -1,4 +1,4 @@
-const { add, Mice } = require("../models/mice");
+const { add, Mice } = require("../Models/Mice");
 const cloudinary = require("../cloudinary/cloudinary");
 const fs = require("fs");
 
