@@ -1,4 +1,4 @@
-const { add, Mice } = require("../Models/Mice");
+const { add, Mice } = require("../models/mice");
 const cloudinary = require("../cloudinary/cloudinary");
 const fs = require("fs");
 
@@ -142,4 +142,90 @@ const getAllMice = async (req, res) => {
   }
 };
 
-module.exports = { createMouse, getAllMice };
+const recommendMouse = async (req, res) => {
+  try {
+    const {
+      grip,
+      sizeCategory,
+      sizeCategoryFingertip,
+      shape,
+      weight,
+    } = req.query;
+
+    const mice = await Mice.find({});
+
+    const scoredMice = mice.map((mouse) => {
+      let points = 0;
+
+      // Grip
+      if (grip && Array.isArray(mouse.gripStyles) && mouse.gripStyles.includes(grip)) {
+        points += 1;
+      }
+
+      // Size for normal grip flow
+      if (sizeCategory) {
+        if (mouse.sizeCategory === sizeCategory) {
+          points += 1;
+        }
+      }
+
+      // Size for fingertip flow
+      if (sizeCategoryFingertip) {
+        if (sizeCategoryFingertip === "true_fingertip") {
+          // usually the smallest mice
+          if (mouse.sizeCategory === "small") {
+            points += 1;
+          }
+        } else if (sizeCategoryFingertip === "compact_fingertip") {
+          // small or medium can work here
+          if (mouse.sizeCategory === "small" || mouse.sizeCategory === "medium") {
+            points += 1;
+          }
+        } else if (sizeCategoryFingertip === "balanced_fingertip") {
+          if (mouse.sizeCategory === "medium") {
+            points += 1;
+          }
+        }
+      }
+
+      // Shape
+      if (shape && shape !== "no_preference") {
+        if (mouse.shapeCategory === shape) {
+          points += 1;
+        }
+      }
+
+      // Weight
+      if (weight) {
+        const mouseWeight = Number(mouse.weight);
+
+        if (weight === "ultralight" && mouseWeight <= 45) {
+          points += 1;
+        } else if (weight === "light" && mouseWeight > 45 && mouseWeight <= 60) {
+          points += 1;
+        } else if (weight === "balanced" && mouseWeight > 60) {
+          points += 1;
+        }
+      }
+
+      return {
+        ...mouse.toObject(),
+        points,
+      };
+    });
+
+    const recommended = scoredMice
+      .filter((mouse) => mouse.points > 0)
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 3);
+
+    res.status(200).json({recommended});
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to recommend mouse",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = { createMouse, getAllMice, recommendMouse };

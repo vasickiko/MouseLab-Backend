@@ -8,7 +8,7 @@ const path = require("path");
 
 const upload = require("./multer/upload");
 const { login } = require("./controller/adminLogin");
-const { createMouse, getAllMice } = require("./controller/miceController");
+const { createMouse, getAllMice, recommendMouse } = require("./controller/miceController");
 
 const app = express();
 
@@ -18,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 // app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/get/mice", getAllMice )
+app.get("/recommend/mice", recommendMouse)
 
 app.post("/login", login);
 
