@@ -118,22 +118,96 @@ const createMouse = async (req, res) => {
   }
 };
 
+
 const getAllMice = async (req, res) => {
   try {
-    const { search } = req.query;
+    const {
+      search = "",
+      brand,
+      size,
+      shape,
+      connectivity,
+      sensor,
+      material,
+      weightMin,
+      weightMax,
+      sort = "recent",
+      page = 1,
+      limit = 24,
+    } = req.query;
 
     const filters = {};
 
-    if (search && search.trim()) {
-      filters.$or = [
-        { brand: { $regex: search, $options: "i" } },
-        { model: { $regex: search, $options: "i" } },
-      ];
+    if (search.trim()) {
+      const searchWords = search
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+      filters.$and = searchWords.map((word) => ({
+        $or: [
+          { brand: { $regex: word, $options: "i" } },
+          { model: { $regex: word, $options: "i" } },
+        ],
+      }));
     }
 
-    const mice = await Mice.find(filters).limit(10);
+    if (brand) {
+      filters.brand = { $regex: `^${brand}$`, $options: "i" };
+    }
 
-    res.status(200).json(mice);
+    if (size) {
+      filters.sizeCategory = size;
+    }
+
+    if (shape) {
+      filters.shapeCategory = shape;
+    }
+
+    if (connectivity) {
+      filters.connectivity = connectivity;
+    }
+
+    if (sensor) {
+      filters.sensor = { $regex: sensor, $options: "i" };
+    }
+
+    if (material) {
+      filters.material = { $regex: material, $options: "i" };
+    }
+
+    if (weightMin || weightMax) {
+      filters.weight = {};
+      if (weightMin) filters.weight.$gte = Number(weightMin);
+      if (weightMax) filters.weight.$lte = Number(weightMax);
+    }
+
+    let sortOption = { createdAt: -1 };
+
+    if (sort === "recent") sortOption = { createdAt: -1 };
+    if (sort === "oldest") sortOption = { createdAt: 1 };
+    if (sort === "weight-low") sortOption = { weight: 1 };
+    if (sort === "weight-high") sortOption = { weight: -1 };
+    if (sort === "dpi-high") sortOption = { "performance.dpi": -1 };
+    if (sort === "dpi-low") sortOption = { "performance.dpi": 1 };
+    if (sort === "name-asc") sortOption = { brand: 1, model: 1 };
+    if (sort === "name-desc") sortOption = { brand: -1, model: -1 };
+
+    const currentPage = Number(page) || 1;
+    const perPage = Number(limit) || 24;
+    const skip = (currentPage - 1) * perPage;
+
+    const [mice, total] = await Promise.all([
+      Mice.find(filters).sort(sortOption).skip(skip).limit(perPage),
+      Mice.countDocuments(filters),
+    ]);
+
+    res.status(200).json({
+      mice,
+      total,
+      page: currentPage,
+      pages: Math.ceil(total / perPage),
+    });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch mice",
@@ -141,6 +215,8 @@ const getAllMice = async (req, res) => {
     });
   }
 };
+
+
 
 const recommendMouse = async (req, res) => {
   try {
@@ -152,50 +228,85 @@ const recommendMouse = async (req, res) => {
       weight,
     } = req.query;
 
-    const mice = await Mice.find({});
+    let mice = await Mice.find({});
+
+    // Grip filtering
+    if (sizeCategoryFingertip === "true fingertip") {
+      mice = mice.filter((mouse) =>
+        mouse.gripStyles.includes("true fingertip")
+      );
+    } else if (grip) {
+      mice = mice.filter((mouse) =>
+        mouse.gripStyles.includes(grip)
+      );
+    }
+
+    // Shape filtering
+    if (shape && shape !== "no_preference") {
+      mice = mice.filter((mouse) => mouse.shapeCategory === shape);
+    }
 
     const scoredMice = mice.map((mouse) => {
       let points = 0;
 
-      // Grip
-      if (grip && Array.isArray(mouse.gripStyles) && mouse.gripStyles.includes(grip)) {
+      // Normal size scoring
+      if (sizeCategory && mouse.sizeCategory === sizeCategory) {
         points += 1;
       }
 
-      // Size for normal grip flow
-      if (sizeCategory) {
-        if (mouse.sizeCategory === sizeCategory) {
+      // Grip scoring
+      if (grip === "palm") {
+        if (
+          mouse.gripStyles.includes("palm") &&
+          mouse.gripStyles.length === 1
+        ) {
+          points += 5;
+        } else if (mouse.gripStyles.includes("palm")) {
           points += 1;
         }
       }
 
-      // Size for fingertip flow
-      if (sizeCategoryFingertip) {
-        if (sizeCategoryFingertip === "true_fingertip") {
-          // usually the smallest mice
-          if (mouse.sizeCategory === "small") {
-            points += 1;
-          }
-        } else if (sizeCategoryFingertip === "compact_fingertip") {
-          // small or medium can work here
-          if (mouse.sizeCategory === "small" || mouse.sizeCategory === "medium") {
-            points += 1;
-          }
-        } else if (sizeCategoryFingertip === "balanced_fingertip") {
-          if (mouse.sizeCategory === "medium") {
-            points += 1;
-          }
-        }
-      }
-
-      // Shape
-      if (shape && shape !== "no_preference") {
-        if (mouse.shapeCategory === shape) {
+      if (grip === "fingertip") {
+        if (
+          mouse.gripStyles.includes("fingertip") &&
+          mouse.gripStyles.length === 1
+        ) {
+          points += 5;
+        } else if (mouse.gripStyles.includes("fingertip")) {
           points += 1;
         }
       }
 
-      // Weight
+      if (grip === "claw") {
+        if (
+          mouse.gripStyles.includes("claw") &&
+          mouse.gripStyles.length === 1
+        ) {
+          points += 5;
+        } else if (mouse.gripStyles.includes("claw")) {
+          points += 1;
+        }
+      }
+
+      // Fingertip-specific scoring
+      if (sizeCategoryFingertip === "true fingertip") {
+        if (mouse.gripStyles.includes("true fingertip")) {
+          points += 5;
+        }
+      } else if (sizeCategoryFingertip === "compact_fingertip") {
+        if (
+          mouse.sizeCategory === "small" ||
+          mouse.sizeCategory === "medium"
+        ) {
+          points += 1;
+        }
+      } else if (sizeCategoryFingertip === "balanced_fingertip") {
+        if (mouse.sizeCategory === "medium") {
+          points += 1;
+        }
+      }
+
+      // Weight scoring
       if (weight) {
         const mouseWeight = Number(mouse.weight);
 
@@ -215,11 +326,10 @@ const recommendMouse = async (req, res) => {
     });
 
     const recommended = scoredMice
-      .filter((mouse) => mouse.points > 0)
       .sort((a, b) => b.points - a.points)
       .slice(0, 3);
 
-    res.status(200).json({recommended});
+    res.status(200).json({ recommended });
   } catch (error) {
     res.status(500).json({
       message: "Failed to recommend mouse",

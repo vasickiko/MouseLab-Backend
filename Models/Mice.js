@@ -29,7 +29,7 @@ const miceSchema = new mongoose.Schema(
     gripStyles: [
       {
         type: String,
-        enum: ["palm", "claw", "aggressive claw", "relaxed claw", "fingertip"],
+        enum: ["palm", "claw", "aggressive claw", "relaxed claw", "fingertip", "true fingertip"],
       },
     ],
 
