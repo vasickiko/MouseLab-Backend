@@ -126,6 +126,7 @@ const getAllMice = async (req, res) => {
       brand,
       size,
       shape,
+      grip,
       connectivity,
       sensor,
       material,
@@ -170,6 +171,10 @@ const getAllMice = async (req, res) => {
 
     if (sensor) {
       filters.sensor = { $regex: sensor, $options: "i" };
+    }
+    
+    if (grip) {
+      filters.gripStyles = grip;
     }
 
     if (material) {
